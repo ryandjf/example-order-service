@@ -16,6 +16,7 @@ repositories {
 
 apply from: "${rootProject.projectDir}/gradle/jacoco.gradle"
 apply from: "${rootProject.projectDir}/gradle/checkstyle.gradle"
+apply from: "${rootProject.projectDir}/gradle/spotbugs.gradle"
 
 group = 'net.thoughtworks'
 version = '0.0.1-SNAPSHOT'
