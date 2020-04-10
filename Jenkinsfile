@@ -1,28 +1,38 @@
-pipeline {
-    agent {
-        docker {
-            image 'gradle:6.3-jdk8'
-            args '-v $HOME/.gradle:/root/.gradle -v $HOME/.m2:/root/.m2'
-        }
-    } 
+def label = "builder"
 
-    stages {
-        stage('build') {
-            steps {
-                sh 'gradle clean build'
-            }
+podTemplate(label: label, containers: [
+  containerTemplate(name: 'gradle', image: 'gradle:4.5.1-jdk9', command: 'cat', ttyEnabled: true)
+],
+volumes: [
+  hostPathVolume(mountPath: '/home/gradle/.gradle', hostPath: '/tmp/jenkins/.gradle')
+]) {
+  node(label) {
+    def myRepo = checkout scm
+    def gitCommit = myRepo.GIT_COMMIT
+    def gitBranch = myRepo.GIT_BRANCH
+    def shortGitCommit = "${gitCommit[0..10]}"
+    def previousGitCommit = sh(script: "git rev-parse ${gitCommit}~", returnStdout: true)
+ 
+    stage('Test') {
+      try {
+        container('gradle') {
+          sh """
+            pwd
+            echo "GIT_BRANCH=${gitBranch}" >> /etc/environment
+            echo "GIT_COMMIT=${gitCommit}" >> /etc/environment
+            gradle test
+            """
         }
+      }
+      catch (exc) {
+        println "Failed to test - ${currentBuild.fullDisplayName}"
+        throw(exc)
+      }
     }
-    post {
-        always {
-            publishHTML target: [
-                allowMissing: false,
-                alwaysLinkToLastBuild: false,
-                keepAll: true,
-                reportDir: 'build/reports',
-                reportFiles: '**/*',
-                reportName: 'Build Reports'
-            ]
-        }
+    stage('Build') {
+      container('gradle') {
+        sh "gradle build"
+      }
     }
+  }
 }
