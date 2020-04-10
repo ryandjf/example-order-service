@@ -1,22 +1,24 @@
-def label = "builder"
+def label = 'builder'
 
 podTemplate(label: label, containers: [
-  containerTemplate(name: 'gradle', image: 'gradle:6.3-jdk8', command: 'cat', ttyEnabled: true)
-],
-volumes: [
-  hostPathVolume(mountPath: '/home/gradle/.gradle', hostPath: '/tmp/jenkins/.gradle')
-]) {
-  node(label) {
-    def myRepo = checkout scm
-    def gitCommit = myRepo.GIT_COMMIT
-    def gitBranch = myRepo.GIT_BRANCH
-    def shortGitCommit = "${gitCommit[0..10]}"
-    def previousGitCommit = sh(script: "git rev-parse ${gitCommit}~", returnStdout: true)
- 
-    stage('Build') {
-      container('gradle') {
-        sh "gradle build"
-      }
+    containerTemplate(name: 'gradle', image: 'gradle:6.3-jdk8', command: 'cat', ttyEnabled: true)
+    ], volumes: [
+    persistentVolumeClaim(mountPath: '/root/.m2/repository', claimName: 'maven-cache', readOnly: false)
+    ]) {
+    
+    node(label) {
+        checkout scm
+        stage('Build') {
+            container('gradle') {
+                sh 'gradle build'
+                publishHTML(target : [
+                    allowMissing: false,
+                    alwaysLinkToLastBuild: false,
+                    keepAll: true,
+                    reportDir: 'build/reports',
+                    reportFiles: '**/*',
+                    reportName: 'Build Reports'])
+            }
+        }
     }
-  }
 }
