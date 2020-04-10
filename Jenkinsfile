@@ -15,8 +15,8 @@ pipeline {
                 alwaysLinkToLastBuild: false,
                 keepAll: true,
                 reportDir: 'build/reports',
-                reportFiles: '*/*.html',
-                reportName: 'Report'
+                reportFiles: '**/*',
+                reportName: 'Build Reports'
             ]
         }
     }
