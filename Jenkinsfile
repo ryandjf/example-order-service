@@ -9,6 +9,10 @@ podTemplate(label: label, containers: [
         alwaysPullImage:false, 
         command:'cat', 
         args:'', 
+        resourceRequestCpu: '50m',
+        resourceLimitCpu: '100m',
+        resourceRequestMemory: '100Mi',
+        resourceLimitMemory: '200Mi',
         ttyEnabled: true, 
         envVars: [
             containerEnvVar(key: 'MYSQL_ALLOW_EMPTY_PASSWORD', value: 'true')
@@ -41,5 +45,16 @@ podTemplate(label: label, containers: [
                 sh '/kaniko/executor -f `pwd`/Dockerfile -c `pwd` --insecure --skip-tls-verify --cache=true --destination=ryandjf/example-order-service:latest'
             }
         }
+        // stage('push-image') {
+        //     steps {
+        //         sh '''
+        //         BUILD_VERSION_NUMBER=0.1.1
+        //         ./gradlew jibDockerBuild
+        //         docker tag net.thoughtworks/example-product-service:latest $DOCKER_REGISTRY/example-product-service:$BUILD_VERSION_NUMBER
+        //         docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD'
+        //         docker push $DOCKER_REGISTRY/example-product-service:$BUILD_VERSION_NUMBER
+        //         '''
+        //     }
+        // }
     }
 }
