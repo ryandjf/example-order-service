@@ -2,7 +2,21 @@ def label = 'builder'
 
 podTemplate(label: label, containers: [
     containerTemplate(name: 'gradle', image: 'gradle:6.3-jdk8', command: 'cat', ttyEnabled: true),
-    containerTemplate(name: 'kaniko', image: 'gcr.io/kaniko-project/executor:debug',alwaysPullImage:true, command:'/busybox/sh -c', args:'/busybox/cat', ttyEnabled: true)
+    containerTemplate(name: 'kaniko', image: 'gcr.io/kaniko-project/executor:debug',alwaysPullImage:true, command:'/busybox/sh -c', args:'/busybox/cat', ttyEnabled: true),
+    containerTemplate(
+        name: 'mysql', 
+        image: 'mysql:5.7', 
+        alwaysPullImage:false, 
+        command:'cat', 
+        args:'', 
+        ttyEnabled: true, 
+        envVars: [
+            containerEnvVar(key: 'MYSQL_ALLOW_EMPTY_PASSWORD', value: 'true')
+        ], 
+        ports: [
+            portMapping(name: 'mysql', containerPort: 3306, hostPort: 3306)
+        ]
+        )
     ], volumes: [
     persistentVolumeClaim(mountPath: '/root/.m2/repository', claimName: 'maven-cache', readOnly: false),
     secretVolume(secretName: 'docker-config-secret', mountPath: '/kaniko/.docker')
