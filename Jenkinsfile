@@ -42,7 +42,7 @@ podTemplate(label: label, containers: [
         }
         stage('Build and push image') {
             container('kaniko') {
-                sh '/kaniko/executor -f `pwd`/Dockerfile -c `pwd` --insecure --skip-tls-verify --cache=true --destination=ryandjf/example-order-service:latest'
+                sh '/kaniko/executor -f `pwd`/Dockerfile -c `pwd` --insecure --skip-tls-verify --destination=ryandjf/example-order-service:latest'
             }
         }
         // stage('push-image') {
