@@ -5,7 +5,7 @@ podTemplate(label: label, containers: [
     containerTemplate(name: 'kaniko', image: 'gcr.io/kaniko-project/executor:debug',alwaysPullImage:true, command:'/busybox/sh -c', args:'/busybox/cat', ttyEnabled: true)
     ], volumes: [
     persistentVolumeClaim(mountPath: '/root/.m2/repository', claimName: 'maven-cache', readOnly: false),
-    secretVolume(secretName: 'jenkins-docker-secret', mountPath: '/kaniko/.docker/config.json')
+    secretVolume(secretName: 'docker-config-secret', mountPath: '/kaniko/.docker')
     ]) {
     
     node(label) {
