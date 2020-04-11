@@ -5,7 +5,7 @@ podTemplate(label: label, containers: [
     containerTemplate(name: 'kaniko', image: 'gcr.io/kaniko-project/executor:debug',alwaysPullImage:true, command:'/busybox/sh -c', args:'/busybox/cat', ttyEnabled: true)
     ], volumes: [
     persistentVolumeClaim(mountPath: '/root/.m2/repository', claimName: 'maven-cache', readOnly: false),
-    secretVolume(secretName: 'jenkins-docker-secret', mountPath: '/kaniko/.docker')
+    secretVolume(secretName: 'jenkins-docker-secret', mountPath: '/kaniko/.docker/config.json')
     ]) {
     
     node(label) {
@@ -24,7 +24,6 @@ podTemplate(label: label, containers: [
         }
         stage('Build and push image') {
             container('kaniko') {
-                sh 'cat /kaniko/.docker/config.json'
                 sh '/kaniko/executor -f `pwd`/Dockerfile -c `pwd` --insecure --skip-tls-verify --cache=true --destination=ryandjf/example-order-service:latest'
             }
         }
