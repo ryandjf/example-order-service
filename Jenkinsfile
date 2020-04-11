@@ -24,7 +24,7 @@ podTemplate(label: label, containers: [
         }
         stage('Build and push image') {
             container('kaniko') {
-                sh 'ls /kaniko/.docker'
+                sh 'cat /kaniko/.docker/config.json'
                 sh '/kaniko/executor -f `pwd`/Dockerfile -c `pwd` --insecure --skip-tls-verify --cache=true --destination=ryandjf/example-order-service:latest'
             }
         }
