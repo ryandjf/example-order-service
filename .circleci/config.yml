@@ -1,0 +1,136 @@
+version: 2
+jobs:
+  build:
+    docker:
+      - image: circleci/openjdk:8-jdk
+      - image: tkuchiki/delayed-mysql
+        environment:
+          MYSQL_ROOT_PASSWORD: 'abcd1234'
+          MYSQL_DATABASE: example_db
+    working_directory: ~/example-order-service
+    environment:
+      JVM_OPTS: -Xmx3200m
+      SPRING_PROFILES_ACTIVE: "circleci"
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+          - v1-dependencies-{{ checksum "build.gradle" }}
+          - v1-dependencies-
+      - run: ./gradlew dependencies
+      - save_cache:
+          paths:
+            - ~/.gradle
+          key: v1-dependencies-{{ checksum "build.gradle" }}
+      - run: ./gradlew clean build
+      - store_test_results:
+          path: build/test-results
+      - store_artifacts:
+          path: build
+      - setup_remote_docker:
+          docker_layer_caching: true
+      # build and push Docker image
+      - run:
+          name: Build and push docker image
+          command: |
+            BUILD_NUM_DOCKER_TAG=0.1.$CIRCLE_BUILD_NUM
+            ./gradlew jibDockerBuild
+            docker tag net.thoughtworks/example-order-service:latest ryandjf/example-order-service:$BUILD_NUM_DOCKER_TAG
+            docker login -u $DOCKER_USER -p $DOCKER_PASS
+            docker push ryandjf/example-order-service:$BUILD_NUM_DOCKER_TAG
+            mkdir -p /tmp/workspace/docker-build
+            cd /tmp/workspace/docker-build
+            echo ${BUILD_NUM_DOCKER_TAG} > docker-build_number.txt
+      - persist_to_workspace:
+          root: /tmp/workspace
+          paths:
+            - docker-build
+
+  security-checks:
+    working_directory: ~/example-order-service
+    docker:
+      - image: docker:stable
+    steps:
+      - checkout
+      - setup_remote_docker
+      - run:
+          command: sh scripts/security-checks.sh
+      - store_artifacts:
+          path: build/reports/hawkeye/hawkeye_report.json
+
+  deploy-aws-k8s:
+    docker:
+      - image: circleci/python:2
+    working_directory: ~/example-order-service
+    steps:
+      - checkout
+      - run:
+          name: Install kubectl
+          command: |
+            wget -O kubectl https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl
+            sudo mv ./kubectl /usr/local/bin/kubectl
+            sudo chmod +x /usr/local/bin/kubectl
+      - attach_workspace: &attach_workspace
+          at: /tmp/workspace
+      - run:
+          name: Deploy service with kubectl
+          command: |
+            echo "${K8S_KEY_FILE}" | base64 --decode >> kubeconfig
+            kubectl apply -f deploy/kube/mysql-deployment.yaml --kubeconfig=kubeconfig
+            kubectl apply -f deploy/kube/mysql-service.yaml --kubeconfig=kubeconfig
+            export BUILD_NUM_DOCKER_TAG="$(cat /tmp/workspace/docker-build/docker-build_number.txt)"
+            sed -i "s/BUILD_VERSION/$BUILD_NUM_DOCKER_TAG/g" deploy/kube/example-order-service.yaml
+            kubectl apply -f deploy/kube/example-order-service.yaml --kubeconfig=kubeconfig
+            kubectl rollout status deployment.v1.apps/example-order-app --kubeconfig=kubeconfig
+            kubectl apply -f deploy/kube/example-order-gateway.yaml --kubeconfig=kubeconfig
+
+  deploy-aws-eks:
+    docker:
+      - image: circleci/python:2
+    working_directory: ~/example-order-service
+    steps:
+      - checkout
+      - run: 
+          name: Install aws cli
+          command: |
+            sudo pip install awscli
+            aws --version
+      - run: 
+          name: Install aws-iam-authenticator
+          command: |
+            curl -o aws-iam-authenticator https://amazon-eks.s3-us-west-2.amazonaws.com/1.10.3/2018-07-26/bin/linux/amd64/aws-iam-authenticator
+            sudo mv ./aws-iam-authenticator /usr/local/bin/aws-iam-authenticator
+            sudo chmod +x /usr/local/bin/aws-iam-authenticator
+            /usr/local/bin/aws-iam-authenticator --help
+      - run: 
+          name: Install kubectl
+          command: |
+            wget -O kubectl https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl
+            sudo mv ./kubectl /usr/local/bin/kubectl
+            sudo chmod +x /usr/local/bin/kubectl
+      - run:
+          name: Install eksctl
+          command: |
+            curl --silent --location "https://github.com/weaveworks/eksctl/releases/download/latest_release/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp
+            sudo mv /tmp/eksctl /usr/local/bin
+            sudo chmod +x /usr/local/bin/eksctl
+      - attach_workspace: &attach_workspace
+          at: /tmp/workspace
+      - run:
+          name: Deploy service with kubectl
+          command: |
+            eksctl utils write-kubeconfig --name=istio-on-eks
+            export BUILD_NUM_DOCKER_TAG="$(cat /tmp/workspace/docker-build/docker-build_number.txt)"
+            sed -i "s/BUILD_VERSION/$BUILD_NUM_DOCKER_TAG/g" deploy/example-order-service.yaml
+            kubectl apply -f deploy/example-order-service.yaml
+            kubectl rollout status deployment.v1.apps/example-order-service
+
+workflows:
+  version: 2
+  build-deploy:
+    jobs:
+      - build
+      - deploy-aws-k8s:
+          requires:
+            - build
+      - security-checks

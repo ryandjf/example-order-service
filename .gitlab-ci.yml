@@ -1,0 +1,62 @@
+image: openjdk:8-jdk-alpine
+
+services:
+  - mysql:latest
+
+variables:
+  SPRING_PROFILES_ACTIVE: "gitlabci"
+  MYSQL_DATABASE: example_db
+  MYSQL_ROOT_PASSWORD: abcd1234
+
+stages:
+  - gradle-build
+  - gradle-docker
+  - security-checks
+
+gradle-build:
+  stage: gradle-build
+  script:
+    - ./gradlew clean build
+  artifacts:
+    paths:
+      - build/
+    when: always
+    reports:
+      junit: [build/test-results/test/TEST-*.xml, build/test-results/integrationTest/TEST-*.xml]
+
+security-checks:
+  stage: security-checks
+  services:
+    - docker:dind
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_DRIVER: overlay2
+  script:
+    - ./scripts/security-checks.sh
+  artifacts:
+    paths:
+      - build/reports/hawkeye
+    when: always
+
+gradle-docker:
+  stage: gradle-docker
+  services:
+    - docker:dind
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_DRIVER: overlay2
+  script:
+    - export BUILD_NUM_DOCKER_TAG=0.1.$CI_JOB_ID
+    - ./gradlew jibDockerBuild
+    - docker images
+    - docker tag net.thoughtworks/example-order-service:latest ryandjf/example-order-service:$BUILD_NUM_DOCKER_TAG
+    - docker login -u $DOCKER_USER -p $DOCKER_PASS
+    - docker push ryandjf/example-order-service:$BUILD_NUM_DOCKER_TAG
+
+before_script:
+  - export GRADLE_USER_HOME=`pwd`/.gradle
+  - apk add --no-cache git bash docker
+
+cache:
+  paths:
+    - .gradle
