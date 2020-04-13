@@ -1,33 +1,17 @@
 plugins {
-    id 'java'
-    id "idea"
-    id "jacoco"
-    id "checkstyle"
     id 'org.springframework.boot' version '2.2.6.RELEASE'
     id 'io.spring.dependency-management' version '1.0.9.RELEASE'
-    id "com.github.spotbugs" version "3.0.0"
-    id "com.gorylenko.gradle-git-properties" version "2.2.0"
-    id "com.diffplug.gradle.spotless" version "3.26.1"
-    id "com.cinnober.gradle.semver-git" version "2.5.0"
+    id 'java'
+    id 'idea'
 }
-
-repositories {
-    maven {
-        url "https://maven.aliyun.com/repository/central"
-    }
-    mavenCentral()
-}
-
-apply from: "${rootProject.projectDir}/gradle/jacoco.gradle"
-apply from: "${rootProject.projectDir}/gradle/checkstyle.gradle"
-apply from: "${rootProject.projectDir}/gradle/spotbugs.gradle"
-apply from: "${rootProject.projectDir}/gradle/git-hooks.gradle"
-apply from: "${rootProject.projectDir}/gradle/spotless.gradle"
 
 group = 'net.thoughtworks'
 version = '0.0.1-SNAPSHOT'
-sourceCompatibility = 1.8
-targetCompatibility = 1.8
+sourceCompatibility = '1.8'
+
+repositories {
+    mavenCentral()
+}
 
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
