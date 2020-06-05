@@ -1,12 +1,12 @@
 plugins {
-    id 'org.springframework.boot' version '2.2.6.RELEASE'
-    id 'io.spring.dependency-management' version '1.0.9.RELEASE'
     id 'java'
     id 'idea'
+    id 'org.springframework.boot' version '2.2.6.RELEASE'
+    id 'io.spring.dependency-management' version '1.0.9.RELEASE'
+    id "com.google.cloud.tools.jib" version "2.3.0"
 }
 
 group = 'net.thoughtworks'
-version = '0.0.1-SNAPSHOT'
 
 sourceCompatibility = 11
 targetCompatibility = 11
@@ -25,6 +25,22 @@ dependencies {
 
 test {
     useJUnitPlatform()
+}
+
+jib {
+    from {
+        image = 'openjdk:11-jre-slim'
+    }
+    to {
+        image = "ryandjf/example-order-service"
+        tags = ['0.1.0', 'latest']
+    }
+    container {
+        mainClass = 'net.thoughtworks.ExampleOrderServiceApplication'
+        jvmFlags = ['-Dserver.port=8080']
+        ports = ['8080']
+        creationTime = 'USE_CURRENT_TIMESTAMP'
+    }
 }
 
 wrapper {
