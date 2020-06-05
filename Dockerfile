@@ -1,6 +1,7 @@
 FROM openjdk:11-jre-slim
 ENV PORT 8080
 EXPOSE 8080
+EXPOSE 8081
 COPY build/libs/*.jar /opt/app.jar
 WORKDIR /opt
 CMD ["java", "-XX:+UnlockExperimentalVMOptions", "-XX:+UseCGroupMemoryLimitForHeap", "-jar", "app.jar"]

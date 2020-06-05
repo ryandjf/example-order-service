@@ -33,12 +33,12 @@ jib {
     }
     to {
         image = "ryandjf/example-order-service"
-        tags = ['0.1.0', 'latest']
+        tags = ['0.2.0', 'latest']
     }
     container {
         mainClass = 'net.thoughtworks.ExampleOrderServiceApplication'
         jvmFlags = ['-Dserver.port=8080']
-        ports = ['8080']
+        ports = ['8080', '8081']
         creationTime = 'USE_CURRENT_TIMESTAMP'
     }
 }
