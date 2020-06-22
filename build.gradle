@@ -1,15 +1,14 @@
 plugins {
     id 'java'
     id 'idea'
-    id 'org.springframework.boot' version '2.2.6.RELEASE'
+    id 'org.springframework.boot' version '2.3.1.RELEASE'
     id 'io.spring.dependency-management' version '1.0.9.RELEASE'
-    id "com.google.cloud.tools.jib" version "2.3.0"
+    id "com.google.cloud.tools.jib" version "2.4.0"
 }
 
 group = 'net.thoughtworks'
-
+version = '0.3.0'
 sourceCompatibility = 11
-targetCompatibility = 11
 
 repositories {
     mavenCentral()
@@ -27,13 +26,17 @@ test {
     useJUnitPlatform()
 }
 
+bootJar {
+    layered()
+}
+
 jib {
     from {
         image = 'openjdk:11-jre-slim'
     }
     to {
-        image = "ryandjf/example-order-service"
-        tags = ['0.3.0', 'latest']
+        image = "${group}/${jar.archiveBaseName}"
+        tags = ["${version}", 'latest']
     }
     container {
         ports = ['8080', '8081']
